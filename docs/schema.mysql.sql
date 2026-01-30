@@ -2,6 +2,10 @@
 -- Stack: Java + Spring Boot + MySQL + Redis
 -- Domain: users, accounts(예수금), stocks, orders, fills, holdings, trade_logs, accounts_hold(Hold)
 --
+-- Source
+-- - ERD Cloud에서 추출한 SQL을 기반으로 하되, MySQL에서 실행 불가능한 구문/오타는 보정했습니다.
+-- - 특히 accounts_hold 테이블의 상태 컬럼은 ERD 추출본에서 `version`으로 출력되었으나 의미상 `status`로 정리합니다.
+--
 -- Notes
 -- - 금액(원화)은 소수점 없는 정수(BIGINT, KRW)로 저장합니다.
 -- - 주문 가능 금액(Available) = deposit_krw - SUM(accounts_hold.hold_krw where status='ACTIVE')
@@ -19,7 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
   password          VARCHAR(255)     NOT NULL, -- 해시된 비밀번호(예: BCrypt)
   status            ENUM('ACTIVE','SUSPENDED','DELETED') NOT NULL DEFAULT 'ACTIVE',
   created_at        TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at        TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_at        TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uk_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -32,7 +36,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   deposit_krw       BIGINT          NOT NULL DEFAULT 0, -- 예수금(실잔액)
   version           BIGINT          NOT NULL DEFAULT 0, -- (선택) 낙관적 락/재시도에 사용
   created_at        TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at        TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_at        TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (user_id),
   CONSTRAINT fk_accounts_user FOREIGN KEY (user_id) REFERENCES users(id)
     ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -49,7 +53,7 @@ CREATE TABLE IF NOT EXISTS stocks (
   market            VARCHAR(32)      NOT NULL,           -- 시장구분(예: KOSPI/KOSDAQ/ETF 등)
   status            ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
   created_at        TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at        TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_at        TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uk_stocks_symbol (symbol),
   KEY idx_stocks_name (name)
@@ -70,7 +74,7 @@ CREATE TABLE IF NOT EXISTS orders (
   limit_price_krw       BIGINT          NULL,                    -- 지정가(시장가면 NULL)
   filled_quantity       BIGINT          NOT NULL DEFAULT 0,
   created_at            TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at            TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_at            TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   cancelled_at          TIMESTAMP       NULL,
   PRIMARY KEY (id),
   CONSTRAINT fk_orders_user  FOREIGN KEY (user_id)  REFERENCES users(id)
@@ -94,7 +98,7 @@ CREATE TABLE IF NOT EXISTS accounts_hold (
   hold_krw              BIGINT          NOT NULL, -- 이 주문이 홀드한 금액(원화)
   status                ENUM('ACTIVE','RELEASED') NOT NULL DEFAULT 'ACTIVE',
   reserved_at           TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  released_at           TIMESTAMP       NULL,
+  released_at           TIMESTAMP       NULL DEFAULT NULL,
   release_reason        ENUM('CANCELLED','FILLED','FAILED','EXPIRED','ADJUSTED') NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uk_accounts_hold_order (order_id), -- 주문당 1 Hold
@@ -145,7 +149,7 @@ CREATE TABLE IF NOT EXISTS holdings (
   quantity              BIGINT          NOT NULL DEFAULT 0,       -- 보유 수량
   avg_price_krw         BIGINT          NOT NULL DEFAULT 0,       -- 매수 평균가(0이면 미보유)
   created_at            TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at            TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_at            TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uk_holdings_user_stock (user_id, stock_id),
   CONSTRAINT fk_holdings_user  FOREIGN KEY (user_id)  REFERENCES users(id)

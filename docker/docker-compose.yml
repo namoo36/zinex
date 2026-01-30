@@ -1,0 +1,33 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      TZ: Asia/Seoul
+    volumes:
+      - ./docker/mysql-volume:/var/lib/mysql
+      # 최초 컨테이너 생성 시에만 실행됩니다(데이터 볼륨이 비어있을 때).
+#      - ./docs/schema.mysql.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    networks:
+      - zinex-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server"]
+    networks:
+      - zinex-network
+
+networks:
+  zinex-network:
+    name: zinex-network
+volumes:
+  mysql-volume:
+
+
