@@ -1,186 +1,223 @@
--- MySQL 8.0+ DDL (MVP)
--- Stack: Java + Spring Boot + MySQL + Redis
--- Domain: users, accounts(예수금), stocks, orders, fills, holdings, trade_logs, accounts_hold(Hold)
+-- MySQL dump 10.13  Distrib 8.0.45, for Win64 (x86_64)
 --
--- Source
--- - ERD Cloud에서 추출한 SQL을 기반으로 하되, MySQL에서 실행 불가능한 구문/오타는 보정했습니다.
--- - 특히 accounts_hold 테이블의 상태 컬럼은 ERD 추출본에서 `version`으로 출력되었으나 의미상 `status`로 정리합니다.
+-- Host: 127.0.0.1    Database: zinex
+-- ------------------------------------------------------
+-- Server version	8.0.45
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
 --
--- Notes
--- - 금액(원화)은 소수점 없는 정수(BIGINT, KRW)로 저장합니다.
--- - 주문 가능 금액(Available) = deposit_krw - SUM(accounts_hold.hold_krw where status='ACTIVE')
--- - 동시성 제어는 Redis 분산락(user 단위) + DB 트랜잭션(필수)로 보완합니다.
+-- Table structure for table `accounts`
+--
 
-SET NAMES utf8mb4;
-SET time_zone = '+00:00';
+CREATE DATABASE IF NOT EXISTS zinex;
+USE zinex;
 
--- =============
--- users
--- =============
-CREATE TABLE IF NOT EXISTS users (
-  id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  email             VARCHAR(255)     NOT NULL,
-  password          VARCHAR(255)     NOT NULL, -- 해시된 비밀번호(예: BCrypt)
-  status            ENUM('ACTIVE','SUSPENDED','DELETED') NOT NULL DEFAULT 'ACTIVE',
-  created_at        TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at        TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  UNIQUE KEY uk_users_email (email)
+DROP TABLE IF EXISTS `accounts`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `accounts` (
+  `deposit_krw` bigint NOT NULL DEFAULT '0',
+  `version` bigint NOT NULL DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `id` bigint NOT NULL,
+  `user_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_user_id` (`user_id`),
+  CONSTRAINT `fk_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+  CONSTRAINT `chk_accounts_non_negative` CHECK ((`deposit_krw` >= 0))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
--- =============
--- accounts (예수금)
--- =============
-CREATE TABLE IF NOT EXISTS accounts (
-  user_id           BIGINT UNSIGNED NOT NULL,
-  deposit_krw       BIGINT          NOT NULL DEFAULT 0, -- 예수금(실잔액)
-  version           BIGINT          NOT NULL DEFAULT 0, -- (선택) 낙관적 락/재시도에 사용
-  created_at        TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at        TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (user_id),
-  CONSTRAINT fk_accounts_user FOREIGN KEY (user_id) REFERENCES users(id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT chk_accounts_non_negative CHECK (deposit_krw >= 0)
+--
+-- Table structure for table `accounts_hold`
+--
+
+DROP TABLE IF EXISTS `accounts_hold`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `accounts_hold` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `hold_krw` bigint NOT NULL,
+  `status` enum('ACTIVE','RELEASED') NOT NULL DEFAULT 'ACTIVE',
+  `reserved_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `released_at` timestamp NULL DEFAULT NULL,
+  `release_reason` enum('CANCELLED','FILLED','FAILED','EXPIRED','ADJUSTED') DEFAULT NULL,
+  `order_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_accounts_hold_user` (`user_id`),
+  KEY `fk_order_id` (`order_id`),
+  CONSTRAINT `fk_accounts_hold_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_order_id` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`),
+  CONSTRAINT `chk_accounts_hold_amount` CHECK ((`hold_krw` > 0))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
--- =============
--- stocks
--- =============
-CREATE TABLE IF NOT EXISTS stocks (
-  id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  symbol            VARCHAR(32)      NOT NULL,           -- 종목코드
-  name              VARCHAR(255)     NOT NULL,           -- 종목명
-  market            VARCHAR(32)      NOT NULL,           -- 시장구분(예: KOSPI/KOSDAQ/ETF 등)
-  status            ENUM('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
-  created_at        TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at        TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  UNIQUE KEY uk_stocks_symbol (symbol),
-  KEY idx_stocks_name (name)
+--
+-- Table structure for table `fills`
+--
+
+DROP TABLE IF EXISTS `fills`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `fills` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `order_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned NOT NULL,
+  `stock_id` bigint unsigned NOT NULL,
+  `side` enum('BUY','SELL') NOT NULL,
+  `quantity` bigint NOT NULL,
+  `price_krw` bigint NOT NULL,
+  `fee_krw` bigint NOT NULL DEFAULT '0',
+  `executed_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_fills_order` (`order_id`),
+  KEY `fk_fills_stock` (`stock_id`),
+  KEY `fk_fills_user` (`user_id`),
+  CONSTRAINT `fk_fills_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_fills_stock` FOREIGN KEY (`stock_id`) REFERENCES `stocks` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_fills_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `chk_fills_money` CHECK (((`price_krw` > 0) and (`fee_krw` >= 0))),
+  CONSTRAINT `chk_fills_qty` CHECK ((`quantity` > 0))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
--- =============
--- orders
--- =============
-CREATE TABLE IF NOT EXISTS orders (
-  id                    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  user_id               BIGINT UNSIGNED NOT NULL,
-  stock_id              BIGINT UNSIGNED NOT NULL,
-  side                  ENUM('BUY','SELL') NOT NULL,
-  order_type            ENUM('LIMIT','MARKET') NOT NULL DEFAULT 'LIMIT',
-  status                ENUM('NEW','OPEN','CANCELLED','FILLED','FAILED','EXPIRED') NOT NULL DEFAULT 'NEW',
+--
+-- Table structure for table `holdings`
+--
 
-  quantity              BIGINT          NOT NULL,                -- 주문 수량(주)
-  limit_price_krw       BIGINT          NULL,                    -- 지정가(시장가면 NULL)
-  filled_quantity       BIGINT          NOT NULL DEFAULT 0,
-  created_at            TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at            TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  cancelled_at          TIMESTAMP       NULL,
-  PRIMARY KEY (id),
-  CONSTRAINT fk_orders_user  FOREIGN KEY (user_id)  REFERENCES users(id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT fk_orders_stock FOREIGN KEY (stock_id) REFERENCES stocks(id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT chk_orders_qty CHECK (quantity > 0 AND filled_quantity >= 0 AND filled_quantity <= quantity)
+DROP TABLE IF EXISTS `holdings`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `holdings` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `stock_id` bigint unsigned NOT NULL,
+  `quantity` bigint NOT NULL DEFAULT '0',
+  `avg_price_krw` bigint NOT NULL DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_holdings_stock` (`stock_id`),
+  KEY `fk_holdings_user` (`user_id`),
+  CONSTRAINT `fk_holdings_stock` FOREIGN KEY (`stock_id`) REFERENCES `stocks` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_holdings_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `chk_holdings_avg` CHECK ((`avg_price_krw` >= 0)),
+  CONSTRAINT `chk_holdings_qty` CHECK ((`quantity` >= 0))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
-CREATE INDEX idx_orders_user_created_at ON orders (user_id, created_at);
-CREATE INDEX idx_orders_user_status     ON orders (user_id, status);
-CREATE INDEX idx_orders_stock_created_at ON orders (stock_id, created_at);
+--
+-- Table structure for table `orders`
+--
 
--- =============
--- accounts_hold (주문 단위 Hold)
--- =============
-CREATE TABLE IF NOT EXISTS accounts_hold (
-  id                    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  user_id               BIGINT UNSIGNED NOT NULL,
-  order_id              BIGINT UNSIGNED NOT NULL,
-  hold_krw              BIGINT          NOT NULL, -- 이 주문이 홀드한 금액(원화)
-  status                ENUM('ACTIVE','RELEASED') NOT NULL DEFAULT 'ACTIVE',
-  reserved_at           TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  released_at           TIMESTAMP       NULL DEFAULT NULL,
-  release_reason        ENUM('CANCELLED','FILLED','FAILED','EXPIRED','ADJUSTED') NULL,
-  PRIMARY KEY (id),
-  UNIQUE KEY uk_accounts_hold_order (order_id), -- 주문당 1 Hold
-  KEY idx_accounts_hold_user_status (user_id, status),
-  KEY idx_accounts_hold_user_reserved_at (user_id, reserved_at),
-  CONSTRAINT fk_accounts_hold_user  FOREIGN KEY (user_id)  REFERENCES users(id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT fk_accounts_hold_order FOREIGN KEY (order_id) REFERENCES orders(id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT chk_accounts_hold_amount CHECK (hold_krw > 0)
+DROP TABLE IF EXISTS `orders`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `orders` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `stock_id` bigint unsigned NOT NULL,
+  `side` enum('BUY','SELL') NOT NULL,
+  `order_type` enum('LIMIT','MARKET') NOT NULL DEFAULT 'LIMIT',
+  `status` enum('NEW','OPEN','CANCELLED','FILLED','FAILED','EXPIRED') NOT NULL DEFAULT 'NEW',
+  `quantity` bigint NOT NULL,
+  `limit_price_krw` bigint DEFAULT NULL,
+  `filled_quantity` bigint NOT NULL DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `cancelled_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_orders_stock` (`stock_id`),
+  KEY `fk_orders_user` (`user_id`),
+  CONSTRAINT `fk_orders_stock` FOREIGN KEY (`stock_id`) REFERENCES `stocks` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_orders_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `chk_orders_qty` CHECK (((`quantity` > 0) and (`filled_quantity` >= 0) and (`filled_quantity` <= `quantity`)))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
--- =============
--- fills (체결)
--- =============
-CREATE TABLE IF NOT EXISTS fills (
-  id                    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  order_id              BIGINT UNSIGNED NOT NULL,
-  user_id               BIGINT UNSIGNED NOT NULL,
-  stock_id              BIGINT UNSIGNED NOT NULL,
-  side                  ENUM('BUY','SELL') NOT NULL,
-  quantity              BIGINT          NOT NULL,
-  price_krw             BIGINT          NOT NULL,                -- 체결 단가
-  fee_krw               BIGINT          NOT NULL DEFAULT 0,       -- 수수료(옵션)
-  executed_at           TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  CONSTRAINT fk_fills_order FOREIGN KEY (order_id) REFERENCES orders(id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT fk_fills_user  FOREIGN KEY (user_id)  REFERENCES users(id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT fk_fills_stock FOREIGN KEY (stock_id) REFERENCES stocks(id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT chk_fills_qty CHECK (quantity > 0),
-  CONSTRAINT chk_fills_money CHECK (price_krw > 0 AND fee_krw >= 0)
+--
+-- Table structure for table `stocks`
+--
+
+DROP TABLE IF EXISTS `stocks`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `stocks` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `symbol` varchar(32) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `market` varchar(32) NOT NULL,
+  `status` enum('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
-CREATE INDEX idx_fills_order_id        ON fills (order_id);
-CREATE INDEX idx_fills_user_executed   ON fills (user_id, executed_at);
-CREATE INDEX idx_fills_stock_executed  ON fills (stock_id, executed_at);
+--
+-- Table structure for table `trade_logs`
+--
 
--- =============
--- holdings (보유 종목/평단)
--- =============
-CREATE TABLE IF NOT EXISTS holdings (
-  id                    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  user_id               BIGINT UNSIGNED NOT NULL,
-  stock_id              BIGINT UNSIGNED NOT NULL,
-  quantity              BIGINT          NOT NULL DEFAULT 0,       -- 보유 수량
-  avg_price_krw         BIGINT          NOT NULL DEFAULT 0,       -- 매수 평균가(0이면 미보유)
-  created_at            TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at            TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  UNIQUE KEY uk_holdings_user_stock (user_id, stock_id),
-  CONSTRAINT fk_holdings_user  FOREIGN KEY (user_id)  REFERENCES users(id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT fk_holdings_stock FOREIGN KEY (stock_id) REFERENCES stocks(id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT chk_holdings_qty CHECK (quantity >= 0),
-  CONSTRAINT chk_holdings_avg CHECK (avg_price_krw >= 0)
+DROP TABLE IF EXISTS `trade_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `trade_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned DEFAULT NULL,
+  `order_id` bigint unsigned DEFAULT NULL,
+  `fill_id` bigint unsigned DEFAULT NULL,
+  `event_type` varchar(64) NOT NULL,
+  `payload_json` json DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_trade_logs_fill` (`fill_id`),
+  KEY `fk_trade_logs_order` (`order_id`),
+  KEY `fk_trade_logs_user` (`user_id`),
+  CONSTRAINT `fk_trade_logs_fill` FOREIGN KEY (`fill_id`) REFERENCES `fills` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_trade_logs_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_trade_logs_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
--- =============
--- trade_logs (체결 로그 - MVP는 MySQL 저장)
--- 확장(Phase 이후): MongoDB로 이관 가능
--- =============
-CREATE TABLE IF NOT EXISTS trade_logs (
-  id                    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  user_id               BIGINT UNSIGNED NOT NULL,
-  order_id              BIGINT UNSIGNED NULL,
-  fill_id               BIGINT UNSIGNED NULL,
-  event_type            VARCHAR(64)      NOT NULL,               -- 예: FILL_SUCCEEDED, FILL_FAILED, ORDER_CANCELLED, DEPOSIT 등
-  payload_json          JSON             NULL,                   -- 상세(유연한 스키마)
-  created_at            TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id),
-  CONSTRAINT fk_trade_logs_user  FOREIGN KEY (user_id)  REFERENCES users(id)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT fk_trade_logs_order FOREIGN KEY (order_id) REFERENCES orders(id)
-    ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT fk_trade_logs_fill  FOREIGN KEY (fill_id)  REFERENCES fills(id)
-    ON DELETE SET NULL ON UPDATE CASCADE
+--
+-- Table structure for table `users`
+--
+
+DROP TABLE IF EXISTS `users`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `users` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `email` varchar(255) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `role` enum('USER','ADMIN') NOT NULL DEFAULT 'USER',
+  `status` enum('ACTIVE','SUSPENDED','DELETED') NOT NULL DEFAULT 'ACTIVE',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-CREATE INDEX idx_trade_logs_user_created_at ON trade_logs (user_id, created_at);
-CREATE INDEX idx_trade_logs_event_type      ON trade_logs (event_type);
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
+-- Dump completed on 2026-01-31 16:00:46

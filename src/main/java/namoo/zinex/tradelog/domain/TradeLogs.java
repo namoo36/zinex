@@ -14,52 +14,42 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import namoo.zinex.fill.domain.FillEntity;
-import namoo.zinex.order.domain.OrderEntity;
+import namoo.zinex.core.entity.BaseEntity;
+import namoo.zinex.fill.domain.Fills;
+import namoo.zinex.order.domain.Orders;
 import namoo.zinex.user.domain.User;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "trade_logs")
-public class TradeLogEntity {
+public class TradeLogs extends BaseEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "id", nullable = false)
   private Long id;
 
-  @Column(name = "user_id", nullable = false)
-  private Long userId;
-
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "user_id", referencedColumnName = "id", insertable = false, updatable = false)
+  @JoinColumn(name = "user_id")
   private User user;
 
-  @Column(name = "order_id")
-  private Long orderId;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "order_id")
+  private Orders order;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "order_id", referencedColumnName = "id", insertable = false, updatable = false)
-  private OrderEntity order;
+  @JoinColumn(name = "fill_id")
+  private Fills fill;
 
-  @Column(name = "fill_id")
-  private Long fillId;
-
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "fill_id", referencedColumnName = "id", insertable = false, updatable = false)
-  private FillEntity fill;
-
-  @Column(name = "event_type", nullable = false, length = 64)
+  @Column(name = "event_type", nullable = false)
   private String eventType;
 
   @Column(name = "payload_json", columnDefinition = "json")
   private String payloadJson;
 
-  @CreationTimestamp
-  @Column(name = "created_at", nullable = false, updatable = false)
-  private Instant createdAt;
 }
 

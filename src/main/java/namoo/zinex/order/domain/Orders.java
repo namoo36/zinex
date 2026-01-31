@@ -16,48 +16,41 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import namoo.zinex.stock.domain.StockEntity;
+import namoo.zinex.core.entity.BaseEntity;
+import namoo.zinex.stock.domain.Stocks;
 import namoo.zinex.user.domain.User;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "orders")
-public class OrderEntity {
+public class Orders extends BaseEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "id", nullable = false)
   private Long id;
 
-  @Column(name = "user_id", nullable = false)
-  private Long userId;
-
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "user_id", referencedColumnName = "id", insertable = false, updatable = false)
+  @JoinColumn(name = "user_id")
   private User user;
 
-  @Column(name = "stock_id", nullable = false)
-  private Long stockId;
-
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "stock_id", referencedColumnName = "id", insertable = false, updatable = false)
-  private StockEntity stock;
+  @JoinColumn(name = "stock_id")
+  private Stocks stock;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "side", nullable = false, length = 8)
+  @Column(name = "side", nullable = false)
   private Side side;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "order_type", nullable = false, length = 8)
-  private OrderType orderType = OrderType.LIMIT;
+  @Column(name = "order_type", nullable = false)
+  private OrderType orderType;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "status", nullable = false, length = 16)
-  private Status status = Status.NEW;
+  @Column(name = "status", nullable = false)
+  private Status status;
 
   @Column(name = "quantity", nullable = false)
   private Long quantity;
@@ -66,15 +59,7 @@ public class OrderEntity {
   private Long limitPriceKrw;
 
   @Column(name = "filled_quantity", nullable = false)
-  private Long filledQuantity = 0L;
-
-  @CreationTimestamp
-  @Column(name = "created_at", nullable = false, updatable = false)
-  private Instant createdAt;
-
-  @UpdateTimestamp
-  @Column(name = "updated_at", nullable = false)
-  private Instant updatedAt;
+  private Long filledQuantity;
 
   @Column(name = "cancelled_at")
   private Instant cancelledAt;

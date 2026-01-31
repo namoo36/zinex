@@ -16,7 +16,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import namoo.zinex.order.domain.OrderEntity;
+import namoo.zinex.order.domain.Orders;
 import namoo.zinex.user.domain.User;
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -25,33 +25,27 @@ import org.hibernate.annotations.CreationTimestamp;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "accounts_hold")
-public class AccountHoldEntity {
+public class AccountsHold {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "id", nullable = false)
   private Long id;
 
-  @Column(name = "user_id", nullable = false)
-  private Long userId;
-
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "user_id", referencedColumnName = "id", insertable = false, updatable = false)
+  @JoinColumn(name = "user_id")
   private User user;
 
-  @Column(name = "order_id", nullable = false)
-  private Long orderId;
-
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "order_id", referencedColumnName = "id", insertable = false, updatable = false)
-  private OrderEntity order;
+  @JoinColumn(name = "order_id")
+  private Orders order;
 
   @Column(name = "hold_krw", nullable = false)
   private Long holdKrw;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "status", nullable = false, length = 16)
-  private Status status = Status.ACTIVE;
+  @Column(name = "status", nullable = false)
+  private Status status;
 
   @CreationTimestamp
   @Column(name = "reserved_at", nullable = false, updatable = false)
@@ -61,7 +55,7 @@ public class AccountHoldEntity {
   private Instant releasedAt;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "release_reason", length = 16)
+  @Column(name = "release_reason")
   private ReleaseReason releaseReason;
 
   public enum Status {

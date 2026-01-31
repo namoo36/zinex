@@ -8,7 +8,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -21,38 +20,33 @@ import org.hibernate.annotations.UpdateTimestamp;
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(
-    name = "stocks",
-    uniqueConstraints = {
-        @UniqueConstraint(name = "uk_stocks_symbol", columnNames = {"symbol"})
-    }
-)
-public class StockEntity {
+@Table(name = "stocks")
+public class Stocks {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "id", nullable = false)
   private Long id;
 
-  @Column(name = "symbol", nullable = false, length = 32)
+  @Column(name = "symbol", nullable = false)
   private String symbol;
 
-  @Column(name = "name", nullable = false, length = 255)
+  @Column(name = "name", nullable = false)
   private String name;
 
-  @Column(name = "market", nullable = false, length = 32)
+  @Column(name = "market", nullable = false)
   private String market;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "status", nullable = false, length = 16)
-  private Status status = Status.ACTIVE;
+  @Column(name = "status", nullable = false)
+  private Status status;
 
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
   @UpdateTimestamp
-  @Column(name = "updated_at", nullable = false)
+  @Column(name = "updated_at")
   private Instant updatedAt;
 
   public enum Status {
