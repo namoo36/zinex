@@ -4,21 +4,16 @@ package namoo.zinex.core.exception;
 import lombok.Getter;
 import org.springframework.http.HttpStatusCode;
 
-import java.util.Arrays;
-import java.util.stream.Collectors;
-
 @Getter
 public class BaseException extends RuntimeException{
 
-    private final String code;
-    private final String message;
-    private final String detailMessage;
-    private final HttpStatusCode statusCode;
+    private final String code;  // 비즈니스 에러 코드
+    private final String detailMessage; // 상세 설명
+    private final HttpStatusCode statusCode;    // HTTP 상태 코드
 
     public BaseException(String code, String message, HttpStatusCode statusCode, String... detailMessage) {
         super(message);
         this.code = code;
-        this.message = message;
         this.statusCode = statusCode;
         this.detailMessage = joinDetailMessages(detailMessage);
     }

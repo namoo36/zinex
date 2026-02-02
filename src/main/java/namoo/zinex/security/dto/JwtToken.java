@@ -1,4 +1,4 @@
-package namoo.zinex.security;
+package namoo.zinex.security.dto;
 
 /**
  * JWT 발급 결과 DTO.
@@ -14,3 +14,4 @@ public record JwtToken(
     return new JwtToken(accessToken, refreshToken);
   }
 }
+
