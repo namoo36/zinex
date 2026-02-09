@@ -167,6 +167,51 @@ CREATE TABLE `stocks` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `categories`
+--
+
+DROP TABLE IF EXISTS `categories`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `categories` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `type` enum('MARKET','SECTOR','INDUSTRY','THEME','TAG') NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `parent_id` bigint unsigned DEFAULT NULL,
+  `sort_order` int NOT NULL DEFAULT '0',
+  `status` enum('ACTIVE','INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_categories_parent`
+      FOREIGN KEY (`parent_id`) REFERENCES `categories` (`id`)
+      ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `stock_category`
+--
+
+DROP TABLE IF EXISTS `stock_category`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `stock_category` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `stock_id` bigint unsigned NOT NULL,
+  `category_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `uq_stock_category_pair` UNIQUE (`stock_id`,`category_id`),
+  CONSTRAINT `fk_stock_category_stock`
+      FOREIGN KEY (`stock_id`) REFERENCES `stocks` (`id`)
+      ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_stock_category_category`
+      FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`)
+      ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `trade_logs`
 --
 
