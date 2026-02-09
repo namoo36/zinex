@@ -1,8 +1,8 @@
 package namoo.zinex.auth.dto;
 
-public record SignInResponse(String accessToken) {
-  public static SignInResponse of(String accessToken) {
-    return new SignInResponse(accessToken);
+public record SignInResponse(String accessToken, String refreshToken) {
+  public static SignInResponse of(String accessToken, String refreshToken) {
+    return new SignInResponse(accessToken, refreshToken);
   }
 }
 

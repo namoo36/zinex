@@ -9,7 +9,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       TZ: Asia/Seoul
     volumes:
-      - ./docker/mysql-volume:/var/lib/mysql
+      - ./mysql-volume:/var/lib/mysql
       # 최초 컨테이너 생성 시에만 실행됩니다(데이터 볼륨이 비어있을 때).
 #      - ./docs/schema.mysql.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     networks:

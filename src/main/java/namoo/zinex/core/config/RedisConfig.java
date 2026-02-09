@@ -1,10 +1,7 @@
 package namoo.zinex.core.config;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
-import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -47,25 +44,16 @@ public class RedisConfig {
     return new StringRedisTemplate(connectionFactory);
   }
 
-  /// Object를 JSON으로 직렬화
-  @Bean
-  public ObjectMapper redisObjectMapper() {
-    PolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
-            .allowIfSubType(Object.class)
-            .build();
-
-    return new ObjectMapper()
-            .registerModule(new JavaTimeModule())   // 날짜 타입 지원
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)  // JSON에 없는 필드는 무시
-            .activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL)   // 폴리모픽 타입 지원
-            .disable(SerializationFeature.WRITE_DATE_KEYS_AS_TIMESTAMPS);   // 날짜를 ISO 포맷으로 저장
-  }
-
   /// Object 용 RedisTemplate
   @Bean
   public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
+    // Redis 전용 ObjectMapper (웹 ObjectMapper에 영향 주지 않도록 Bean으로 등록하지 않음)
+    ObjectMapper redisMapper = new ObjectMapper()
+        .registerModule(new JavaTimeModule())
+        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
     // JSON 직렬화/역직렬화
-    GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper());
+    GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(redisMapper);
 
     RedisTemplate<String, Object> template = new RedisTemplate<>();
 

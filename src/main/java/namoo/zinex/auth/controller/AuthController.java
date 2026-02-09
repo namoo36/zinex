@@ -57,7 +57,7 @@ public class AuthController {
     return ResponseEntity.ok()
         .header(HttpHeaders.CACHE_CONTROL, "no-store")    // 인증 응답 캐시 방지
         .header(HttpHeaders.PRAGMA, "no-cache")
-        .body(APIResponse.ok(SignInResponse.of(token.accessToken())));
+        .body(APIResponse.ok(SignInResponse.of(token.accessToken(), token.refreshToken())));
   }
 
   ///  로그아웃

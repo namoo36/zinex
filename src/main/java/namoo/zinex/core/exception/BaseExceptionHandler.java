@@ -8,10 +8,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 
 import java.util.stream.Collectors;
 
@@ -72,6 +74,26 @@ public class BaseExceptionHandler {
 
         log.warn("{}: {}", HttpStatus.BAD_REQUEST, message);
         return APIResponse.nok(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", message);
+    }
+
+    /// 정적 리소스 404 (예: swagger-ui asset 경로 오류)
+    @ExceptionHandler(NoResourceFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public APIResponse<Object> handleNoResourceFound(NoResourceFoundException ex) {
+        log.warn("{}: {}", HttpStatus.NOT_FOUND, ex.getMessage());
+        return APIResponse.nok(HttpStatus.NOT_FOUND, "NOT_FOUND", "리소스를 찾을 수 없습니다.");
+    }
+
+    /// Content-Type 미지원(예: text/plain으로 JSON DTO 요청)
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    @ResponseStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+    public APIResponse<Object> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex) {
+        log.warn("{}: {}", HttpStatus.UNSUPPORTED_MEDIA_TYPE, ex.getMessage());
+        return APIResponse.nok(
+            HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+            "UNSUPPORTED_MEDIA_TYPE",
+            "Content-Type이 올바르지 않습니다. application/json 으로 요청해주세요."
+        );
     }
 
     ///  그 외 예외

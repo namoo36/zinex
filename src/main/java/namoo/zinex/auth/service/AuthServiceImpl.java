@@ -34,7 +34,7 @@ public class AuthServiceImpl implements AuthService {
   private final PasswordEncoder passwordEncoder;
 
   @Value("${jwt.refresh-ttl}")
-  private long refreshTtlMs;
+  private Duration refreshTtl;
 
   // RefreshToken 정보 저장 객체
   private record RefreshSession(Long userId, String sessionId) {}
@@ -98,7 +98,7 @@ public class AuthServiceImpl implements AuthService {
     String refreshToken = jwtTokenService.createRefreshToken(user.getId(), sessionId);
 
     // Reddis에 RefreshToken 저장
-    authRepository.saveRefreshToken(user.getId(), sessionId, refreshToken, Duration.ofMillis(refreshTtlMs));
+    authRepository.saveRefreshToken(user.getId(), sessionId, refreshToken, refreshTtl);
 
     return JwtToken.of(accessToken, refreshToken);
   }
@@ -133,7 +133,7 @@ public class AuthServiceImpl implements AuthService {
     String newRefresh = jwtTokenService.createRefreshToken(user.getId(), session.sessionId());
 
     // Redis에 새로운 RefreshToken 저장
-    authRepository.saveRefreshToken(user.getId(), session.sessionId(), newRefresh, Duration.ofMillis(refreshTtlMs));
+    authRepository.saveRefreshToken(user.getId(), session.sessionId(), newRefresh, refreshTtl);
 
     return JwtToken.of(newAccess, newRefresh);
   }

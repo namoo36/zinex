@@ -1,5 +1,6 @@
 package namoo.zinex.security.exception;
 
+import lombok.Getter;
 import org.springframework.security.core.AuthenticationException;
 
 /**
@@ -7,6 +8,7 @@ import org.springframework.security.core.AuthenticationException;
  *
  * <p>Spring Security 인증 실패 흐름(401)과 자연스럽게 연결하기 위해 {@link AuthenticationException}을 상속합니다.
  */
+@Getter
 public class JwtAuthenticationException extends AuthenticationException {
 
   private final String errorCode;
@@ -24,8 +26,5 @@ public class JwtAuthenticationException extends AuthenticationException {
     this.errorCode = errorCode;
   }
 
-  public String getErrorCode() {
-    return errorCode;
-  }
 }
 

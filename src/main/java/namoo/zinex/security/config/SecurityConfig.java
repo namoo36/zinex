@@ -56,7 +56,8 @@ public class SecurityConfig {
             // role 기반 인가(주식거래소 운영/관리 기능 대비) -> 인증 + ROLE_ADMIN 필요
             .requestMatchers("/api/admin/**").hasRole("ADMIN")
             // /api/**는 인증 필수
-            .requestMatchers("/api/**").authenticated()
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/**").authenticated()
             // 그 외는 공개(문서/헬스체크 등)
             .anyRequest().permitAll()
         )

@@ -13,6 +13,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.Date;
 import java.util.UUID;
@@ -30,10 +31,10 @@ public class JwtTokenService {
     private String SECRET_KEY;
 
     @Value("${jwt.access-ttl}")
-    private long ACCESS_EXPIRATION_TIME; // AccessToken 만료시간
+    private Duration ACCESS_EXPIRATION_TIME; // AccessToken 만료시간
 
     @Value("${jwt.refresh-ttl}")
-    private long REFRESH_EXPIRATION_TIME; // RefreshToken 만료시간
+    private Duration REFRESH_EXPIRATION_TIME; // RefreshToken 만료시간
 
     private SecretKey secretKey;
 
@@ -47,7 +48,7 @@ public class JwtTokenService {
     /// AccessToken 생성
     public String createAccessToken(Long userId, String userName, Role role) {
         long now = System.currentTimeMillis();
-        Date accessExpireTime = new Date(now + ACCESS_EXPIRATION_TIME);
+        Date accessExpireTime = new Date(now + ACCESS_EXPIRATION_TIME.toMillis());
         String jti = UUID.randomUUID().toString();
 
         return Jwts.builder()
@@ -65,7 +66,7 @@ public class JwtTokenService {
     /// 동시 로그인 + rotate/session 방식을 쓰려면 createRefreshToken(userId, sessionId)를 사용하세요.
     public String createRefreshToken(Long userId) {
         long now = System.currentTimeMillis();
-        Date refreshExpireTime = new Date(now + REFRESH_EXPIRATION_TIME);
+        Date refreshExpireTime = new Date(now + REFRESH_EXPIRATION_TIME.toMillis());
 
         return Jwts.builder()
                 .subject(userId.toString())
@@ -84,7 +85,7 @@ public class JwtTokenService {
      */
     public String createRefreshToken(Long userId, String sessionId) {
         long now = System.currentTimeMillis();
-        Date refreshExpireTime = new Date(now + REFRESH_EXPIRATION_TIME);
+        Date refreshExpireTime = new Date(now + REFRESH_EXPIRATION_TIME.toMillis());
         String jti = UUID.randomUUID().toString();
 
         return Jwts.builder()
@@ -117,7 +118,7 @@ public class JwtTokenService {
                 .secure(true)
                 .sameSite("strict")
                 .path(REFRESH_TOKEN_COOKIE_PATH)
-                .maxAge(0)
+                .maxAge(Duration.ZERO)
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
