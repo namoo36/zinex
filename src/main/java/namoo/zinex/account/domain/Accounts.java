@@ -10,15 +10,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import namoo.zinex.core.entity.BaseEntity;
-import namoo.zinex.user.domain.User;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import namoo.zinex.user.domain.Users;
 
 @Getter
 @Setter
@@ -34,7 +31,7 @@ public class Accounts extends BaseEntity {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id")
-  private User user;
+  private Users user;
 
   @Column(name = "deposit_krw", nullable = false)
   private Long depositKrw;

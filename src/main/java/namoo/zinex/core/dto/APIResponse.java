@@ -39,6 +39,10 @@ public class APIResponse<T> {
         return new APIResponse<>(HttpStatus.OK.value(), data);
     }
 
+    public static <T> APIResponse<T> created(T data) {
+        return new APIResponse<>(HttpStatus.CREATED.value(), data);
+    }
+
     public static <T> APIResponse<T> created(HttpServletResponse response, T data) {
         response.setStatus(HttpStatus.CREATED.value());
         return new APIResponse<>(HttpStatus.CREATED.value(), data);

@@ -2,6 +2,7 @@ package namoo.zinex.security.jwt;
 
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
+import namoo.zinex.security.exception.JwtAuthenticationException;
 import namoo.zinex.user.enums.Role;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 public class JwtAuthenticationProvider implements AuthenticationProvider {
 
   private final JwtTokenService jwtTokenService;
+  private final AccessTokenBlacklistService accessTokenBlacklistService;
 
   /// 인증 요청 처리
   @Override
@@ -35,9 +37,15 @@ public class JwtAuthenticationProvider implements AuthenticationProvider {
     Claims claims = jwtTokenService.getClaimsFromToken(accessToken);
     Long userId = jwtTokenService.getUserIdFromToken(claims);
     Role role = jwtTokenService.getRoleFromToken(claims);
+    String jti = jwtTokenService.getJtiFromToken(claims);
 
     if (userId == null || role == null) {
       throw new BadCredentialsException("Invalid token claims");
+    }
+
+    // 2-1) 블랙리스트 체크(로그아웃 즉시 무효화)
+    if (jti != null && accessTokenBlacklistService.isBlacklisted(jti)) {
+      throw new JwtAuthenticationException("BLACKLISTED_TOKEN", "Blacklisted access token");
     }
 
     // 3) 인증된 Authentication 반환

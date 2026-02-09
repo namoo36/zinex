@@ -9,7 +9,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,9 +16,7 @@ import lombok.Setter;
 import namoo.zinex.core.entity.BaseEntity;
 import namoo.zinex.fill.domain.Fills;
 import namoo.zinex.order.domain.Orders;
-import namoo.zinex.user.domain.User;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import namoo.zinex.user.domain.Users;
 
 @Getter
 @Setter
@@ -35,7 +32,7 @@ public class TradeLogs extends BaseEntity {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id")
-  private User user;
+  private Users user;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "order_id")

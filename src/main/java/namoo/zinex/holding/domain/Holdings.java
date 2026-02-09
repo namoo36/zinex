@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import namoo.zinex.core.entity.BaseEntity;
 import namoo.zinex.stock.domain.Stocks;
-import namoo.zinex.user.domain.User;
+import namoo.zinex.user.domain.Users;
 
 @Getter
 @Setter
@@ -31,7 +31,7 @@ public class Holdings extends BaseEntity {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id")
-  private User user;
+  private Users user;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "stock_id")

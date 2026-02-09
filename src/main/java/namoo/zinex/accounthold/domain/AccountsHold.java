@@ -17,7 +17,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import namoo.zinex.order.domain.Orders;
-import namoo.zinex.user.domain.User;
+import namoo.zinex.user.domain.Users;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Getter
@@ -34,7 +34,7 @@ public class AccountsHold {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id")
-  private User user;
+  private Users user;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "order_id")

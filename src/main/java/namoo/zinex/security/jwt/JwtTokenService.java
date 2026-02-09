@@ -13,7 +13,6 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
-import java.time.Duration;
 import java.util.Base64;
 import java.util.Date;
 import java.util.UUID;
@@ -31,10 +30,10 @@ public class JwtTokenService {
     private String SECRET_KEY;
 
     @Value("${jwt.access-ttl}")
-    private Duration ACCESS_EXPIRATION_TIME; // AccessToken 만료시간
+    private long ACCESS_EXPIRATION_TIME; // AccessToken 만료시간
 
     @Value("${jwt.refresh-ttl}")
-    private Duration REFRESH_EXPIRATION_TIME; // RefreshToken 만료시간
+    private long REFRESH_EXPIRATION_TIME; // RefreshToken 만료시간
 
     private SecretKey secretKey;
 
@@ -48,9 +47,11 @@ public class JwtTokenService {
     /// AccessToken 생성
     public String createAccessToken(Long userId, String userName, Role role) {
         long now = System.currentTimeMillis();
-        Date accessExpireTime = new Date(now + ACCESS_EXPIRATION_TIME.toMillis());
+        Date accessExpireTime = new Date(now + ACCESS_EXPIRATION_TIME);
+        String jti = UUID.randomUUID().toString();
 
         return Jwts.builder()
+                .id(jti) // 표준 클레임: jti (AccessToken blacklist용)
                 .subject(userId.toString())
                 .claim(ROLE_CLAIM_KEY, role)
                 .claim(NAME_CLAIM_KEY, userName)
@@ -60,11 +61,11 @@ public class JwtTokenService {
                 .compact();
     }
 
-    /// RefreshToken 생성 (호환용: familyId/jti 없이 발급됨)
-    /// 동시 로그인 + rotate/family 방식을 쓰려면 createRefreshToken(userId, familyId)를 사용하세요.
+    /// RefreshToken 생성 (호환용: sessionId/jti 없이 발급됨)
+    /// 동시 로그인 + rotate/session 방식을 쓰려면 createRefreshToken(userId, sessionId)를 사용하세요.
     public String createRefreshToken(Long userId) {
         long now = System.currentTimeMillis();
-        Date refreshExpireTime = new Date(now + REFRESH_EXPIRATION_TIME.toMillis());
+        Date refreshExpireTime = new Date(now + REFRESH_EXPIRATION_TIME);
 
         return Jwts.builder()
                 .subject(userId.toString())
@@ -78,18 +79,18 @@ public class JwtTokenService {
      * RefreshToken 생성 (rotate + family 지원)
      *
      * <p>- sub: userId
-     * <p>- familyId: 세션 식별자
+     * <p>- sessionId: 세션 식별자
      * <p>- jti: 토큰(1장) 식별자 (rotation 시 매번 변경)
      */
-    public String createRefreshToken(Long userId, String familyId) {
+    public String createRefreshToken(Long userId, String sessionId) {
         long now = System.currentTimeMillis();
-        Date refreshExpireTime = new Date(now + REFRESH_EXPIRATION_TIME.toMillis());
+        Date refreshExpireTime = new Date(now + REFRESH_EXPIRATION_TIME);
         String jti = UUID.randomUUID().toString();
 
         return Jwts.builder()
                 .id(jti) // 표준 클레임: jti
                 .subject(userId.toString())
-                .claim(FAMILY_ID_CLAIM_KEY, familyId)
+                .claim(SESSION_ID_CLAIM_KEY, sessionId)
                 .issuedAt(new Date(now))
                 .expiration(refreshExpireTime)
                 .signWith(secretKey)
@@ -116,7 +117,7 @@ public class JwtTokenService {
                 .secure(true)
                 .sameSite("strict")
                 .path(REFRESH_TOKEN_COOKIE_PATH)
-                .maxAge(Duration.ZERO)
+                .maxAge(0)
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
@@ -163,5 +164,14 @@ public class JwtTokenService {
         if (raw == null) return null;
         if (raw instanceof Role r) return r;
         return Role.valueOf(raw.toString());
+    }
+
+    public String getJtiFromToken(Claims claims) {
+        return claims != null ? claims.getId() : null;
+    }
+
+    public long getExpirationMillisFromToken(Claims claims) {
+        if (claims == null || claims.getExpiration() == null) return 0L;
+        return claims.getExpiration().getTime();
     }
 }
