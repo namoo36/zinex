@@ -4,6 +4,8 @@ import io.jsonwebtoken.Claims;
 import java.time.Duration;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import namoo.zinex.account.domain.Accounts;
+import namoo.zinex.account.repository.AccountsRepository;
 import namoo.zinex.auth.dto.SignUpRequest;
 import namoo.zinex.auth.dto.SignUpResponse;
 import namoo.zinex.auth.repository.AuthRepository;
@@ -29,6 +31,7 @@ public class AuthServiceImpl implements AuthService {
 
   private final AuthRepository authRepository;
   private final UserRepository userRepository;
+  private final AccountsRepository accountsRepository;
   private final AccessTokenBlacklistService accessTokenBlacklistService;
   private final JwtTokenService jwtTokenService;
   private final PasswordEncoder passwordEncoder;
@@ -74,6 +77,9 @@ public class AuthServiceImpl implements AuthService {
     // user 생성 & 저장
     Users user = Users.createUser(email, passwordEncoder.encode(request.password()), request.name());
     Users saved = userRepository.save(user);
+
+    // 계좌 자동 생성(충전식 예치금 모델)
+    accountsRepository.save(Accounts.createAccounts(user));
 
     return SignUpResponse.of(saved.getId(), saved.getEmail(), saved.getName());
   }

@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -59,6 +60,8 @@ public class Categories {
 
   public enum Type {
     MARKET,
+    SECURITY_TYPE,
+    STOCK_TYPE,
     SECTOR,
     INDUSTRY,
     THEME,

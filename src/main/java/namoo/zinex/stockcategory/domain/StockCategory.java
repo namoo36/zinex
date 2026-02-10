@@ -21,10 +21,7 @@ import namoo.zinex.stock.domain.Stocks;
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(
-    name = "stock_category",
-    uniqueConstraints =
-        @UniqueConstraint(name = "uq_stock_category_pair", columnNames = {"stock_id", "category_id"}))
+@Table(name = "stock_category")
 public class StockCategory {
 
   @Id

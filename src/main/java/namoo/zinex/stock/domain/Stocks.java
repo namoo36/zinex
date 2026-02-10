@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -31,6 +32,9 @@ public class Stocks {
   @Column(name = "symbol", nullable = false)
   private String symbol;
 
+  @Column(name = "isin", nullable = false)
+  private String isin;
+
   @Column(name = "name", nullable = false)
   private String name;
 
@@ -39,7 +43,7 @@ public class Stocks {
 
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false)
-  private Status status;
+  private Status status = Status.ACTIVE;
 
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
@@ -52,6 +56,13 @@ public class Stocks {
   public enum Status {
     ACTIVE,
     INACTIVE
+  }
+
+  public static Stocks createStocks(String symbol, String name){
+    Stocks stocks = new Stocks();
+    stocks.name = name;
+    stocks.symbol = symbol;
+    return stocks;
   }
 }
 

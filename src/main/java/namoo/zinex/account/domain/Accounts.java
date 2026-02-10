@@ -7,7 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
@@ -18,7 +18,6 @@ import namoo.zinex.core.entity.BaseEntity;
 import namoo.zinex.user.domain.Users;
 
 @Getter
-@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "accounts")
@@ -29,16 +28,22 @@ public class Accounts extends BaseEntity {
   @Column(name = "id", nullable = false)
   private Long id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "user_id")
+  @OneToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "user_id", nullable = false)
   private Users user;
 
   @Column(name = "deposit_krw", nullable = false)
-  private Long depositKrw;
+  private Long depositKrw = 0L;
 
   @Version
   @Column(name = "version", nullable = false)
-  private Long version;
+  private Long version = 0L;
+
+  public static Accounts createAccounts(Users user){
+    Accounts accounts = new Accounts();
+    accounts.user = user;
+    return accounts;
+  }
 
 }
 
